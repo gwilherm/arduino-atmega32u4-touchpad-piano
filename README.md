@@ -2,6 +2,12 @@
 
 Using a [Touchpad Piano](https://fr.aliexpress.com/item/1005002898325253.html) with Arduino ProMicro
 
+## Breadboard
+![](doc/touchpad-piano_bb.png)
+
+## Schematics
+![](doc/touchpad-piano_schema.png)
+
 ## Flash Arduino ProMicro
 ### Arduino IDE
 * Open touchpad-piano/touchpad-piano.ino
