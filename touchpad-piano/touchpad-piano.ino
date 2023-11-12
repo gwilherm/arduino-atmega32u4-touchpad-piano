@@ -7,7 +7,7 @@ USBMIDI_Interface midi;
 #define SCL_PIN 3
 #define SDO_PIN 2
 
-MIDITouchpadPiano piano(SCL_PIN, SDO_PIN, MIDI_Notes::C(4));
+MIDITouchpadPiano piano(SCL_PIN, SDO_PIN, MIDI_Notes::C(4), PianoMode::Hold);
 
 void setup()
 {

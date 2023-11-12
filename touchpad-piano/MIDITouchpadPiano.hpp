@@ -11,10 +11,15 @@ BEGIN_CS_NAMESPACE
 #define UPDATE_RATE        50
 #define HOLD_THRESHOLD_MS 500
 
+namespace PianoMode {
+    enum Mode: byte {Standard, Hold};
+} // namespace PianoMode
+
+
 class MIDITouchpadPiano : public MIDIOutputElement {
 public:
-    MIDITouchpadPiano(const pin_t scl_pin, const pin_t sdo_pin, MIDIAddress baseAddress)
-        : scl_pin(scl_pin), sdo_pin(sdo_pin), baseAddress(baseAddress), updateTimer(UPDATE_RATE) {}
+    MIDITouchpadPiano(const pin_t scl_pin, const pin_t sdo_pin, MIDIAddress baseAddress, PianoMode::Mode mode = PianoMode::Standard)
+        : scl_pin(scl_pin), sdo_pin(sdo_pin), baseAddress(baseAddress), updateTimer(UPDATE_RATE), mode(mode) {}
 
 public:
     void begin() final override {
@@ -31,6 +36,7 @@ public:
         byte i;
 
         uint64_t prevTouch = lastTouchMs;
+
         // Read data
         for (i = 0; i < NB_NOTES; i++)
         {
@@ -39,13 +45,12 @@ public:
             if (newKeysState[NotePos[i]]) lastTouchMs = millis();
             digitalWrite(scl_pin, HIGH);
         }
-
         
         for (i = 0; i < NB_NOTES; i++)
         {
-            // Re-trigger the note if it was already ON
-            if ((newKeysState[i] & keysState[i]) == 1)
+            if ((mode == PianoMode::Hold) && ((newKeysState[i] & keysState[i]) == 1))
             {
+                // Re-trigger the note if it was already ON
                 if ((lastTouchMs - prevTouch) > HOLD_THRESHOLD_MS)
                 {
                     sender.sendOff(baseAddress + i);
@@ -53,6 +58,7 @@ public:
                 }
             }
 
+            // Key changed state
             if (newKeysState[i] != keysState[i])
             {
                 if (newKeysState[i] == 1)
@@ -62,7 +68,7 @@ public:
                 }
                 else
                 {
-                    if ((lastTouchMs - prevTouch) > HOLD_THRESHOLD_MS)
+                    if ((mode != PianoMode::Hold) || ((lastTouchMs - prevTouch) > HOLD_THRESHOLD_MS))
                     {
                         sender.sendOff(baseAddress + i);
                         keysState[i] = 0;
@@ -76,6 +82,24 @@ public:
         updateTimer.beginNextPeriod();
     }
 
+    void setMode(PianoMode::Mode mode) {
+        // Leaving Hold mode requires to stop notes
+        if (mode == PianoMode::Hold)
+        {
+            for (byte i = 0; i < NB_NOTES; i++)
+            {
+                if (keysState[i] == 1)
+                {
+                    sender.sendOff(baseAddress + i);
+                    keysState[i] = 0;
+                }
+            }
+        }
+        this->mode = mode;
+    }
+
+    PianoMode::Mode getMode() { return mode; }
+
 private:
     const pin_t scl_pin;
     const pin_t sdo_pin;
@@ -84,6 +108,7 @@ private:
     byte keysState[NB_NOTES] = {0};
     uint64_t lastTouchMs = 0;
     AH::Timer<millis> updateTimer;
+    PianoMode::Mode mode;
 
 public:
     DigitalNoteSender sender;
