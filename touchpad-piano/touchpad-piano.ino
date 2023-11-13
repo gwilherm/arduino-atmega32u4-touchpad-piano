@@ -13,7 +13,7 @@ USBMIDI_Interface midi;
 
 MIDITouchpadPiano piano(SCL_PIN, SDO_PIN, MIDI_Notes::C(4));
 
-int btnState = LOW;
+int btnState = HIGH;
 unsigned long lastDebounceTime = 0;
 
 Adafruit_NeoPixel strip(LED_COUNT, RGB_PIN, NEO_GRB + NEO_KHZ800);
@@ -59,24 +59,32 @@ void setup()
 void loop()
 {
   int newBtnState = digitalRead(BTN_PIN);
-
-  if ((millis() - lastDebounceTime) > 50)
+  if ((millis() - lastDebounceTime) > 70)
   {
     if ((btnState == LOW) && (newBtnState == HIGH))
     {
       switch (piano.getMode())
       {
         case PianoMode::Standard:
+#ifdef DEBUG_INFO
+          Serial.println("Hold");
+#endif
           piano.setMode(PianoMode::Hold);
           colorFade( 25, 210,  25); // fade into green
           break;
         case PianoMode::Hold:
+#ifdef DEBUG_INFO
+          Serial.println("Monodic");
+#endif
           piano.setMode(PianoMode::Monodic);
           colorFade( 25,  25, 210); // fade into blue
           break;
         case PianoMode::Monodic:
+#ifdef DEBUG_INFO
+          Serial.println("Standard");
+#endif
           piano.setMode(PianoMode::Standard);
-          colorFade(210,  25,  25); // fade into red
+          colorFade(  0,   0,   0); // fade into black
           break;
       }
     }
