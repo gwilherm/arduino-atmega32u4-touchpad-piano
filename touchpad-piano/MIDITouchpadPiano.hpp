@@ -12,14 +12,14 @@ BEGIN_CS_NAMESPACE
 #define HOLD_THRESHOLD_MS 500
 
 namespace PianoMode {
-    enum Mode: byte {Standard, Hold};
+    enum Mode: byte {Standard, Hold, Monodic};
 } // namespace PianoMode
 
 
 class MIDITouchpadPiano : public MIDIOutputElement {
 public:
     MIDITouchpadPiano(const pin_t sclPin, const pin_t sdoPin, MIDIAddress baseAddress, PianoMode::Mode mode = PianoMode::Standard)
-        : sclPin(sclPin), sdoPin(sdoPin), baseAddress(baseAddress), updateTimer(UPDATE_RATE), mode(mode) {}
+        : sclPin(sclPin), sdoPin(sdoPin), baseAddress(baseAddress), updateTimer(UPDATE_RATE), mode(mode), monodicNote(-1) {}
 
 public:
     void begin() final override {
@@ -33,6 +33,7 @@ public:
         if (!updateTimer) return;
 
         byte newKeysState[NB_NOTES];
+        int newMonodicNote = -1;
         byte i;
 
         uint64_t holdPrevTouch = holdLastTouchMs;
@@ -42,43 +43,61 @@ public:
         {
             digitalWrite(sclPin, LOW);
             newKeysState[NoteMap[i]] = !digitalRead(sdoPin);
-            if (newKeysState[NoteMap[i]]) holdLastTouchMs = millis();
+            if (newKeysState[NoteMap[i]])
+            {
+                holdLastTouchMs = millis();
+                if (NoteMap[i] > newMonodicNote)
+                    newMonodicNote = NoteMap[i];
+            }
             digitalWrite(sclPin, HIGH);
         }
         
-        for (i = 0; i < NB_NOTES; i++)
+        if (mode == PianoMode::Monodic)
         {
-            if ((mode == PianoMode::Hold) && ((newKeysState[i] & keysState[i]) == 1))
+            if (newMonodicNote != monodicNote)
             {
-                // Re-trigger the note if it was already ON
-                if ((holdLastTouchMs - holdPrevTouch) > HOLD_THRESHOLD_MS)
-                {
-                    sender.sendOff(baseAddress + i);
-                    sender.sendOn(baseAddress + i);
-                }
+                sender.sendOff(baseAddress + monodicNote);
+                if (newMonodicNote != -1)
+                    sender.sendOn(baseAddress + newMonodicNote);
+                monodicNote = newMonodicNote;
             }
-
-            // Key changed state
-            if (newKeysState[i] != keysState[i])
+            Serial.println(monodicNote);
+        }
+        else
+        {
+            for (i = 0; i < NB_NOTES; i++)
             {
-                if (newKeysState[i] == 1)
+                if ((mode == PianoMode::Hold) && ((newKeysState[i] & keysState[i]) == 1))
                 {
-                    sender.sendOn(baseAddress + i);
-                    keysState[i] = 1;
-                }
-                else
-                {
-                    if ((mode != PianoMode::Hold) || ((holdLastTouchMs - holdPrevTouch) > HOLD_THRESHOLD_MS))
+                    // Re-trigger the note if it was already ON
+                    if ((holdLastTouchMs - holdPrevTouch) > HOLD_THRESHOLD_MS)
                     {
                         sender.sendOff(baseAddress + i);
-                        keysState[i] = 0;
+                        sender.sendOn(baseAddress + i);
                     }
                 }
-            }
-            // Serial.print(keysState[i]);
-        }
-        // Serial.println();
 
+                // Key changed state
+                if (newKeysState[i] != keysState[i])
+                {
+                    if (newKeysState[i] == 1)
+                    {
+                        sender.sendOn(baseAddress + i);
+                        keysState[i] = 1;
+                    }
+                    else
+                    {
+                        if ((mode != PianoMode::Hold) || ((holdLastTouchMs - holdPrevTouch) > HOLD_THRESHOLD_MS))
+                        {
+                            sender.sendOff(baseAddress + i);
+                            keysState[i] = 0;
+                        }
+                    }
+                }
+                Serial.print(keysState[i]);
+            }
+            Serial.println();
+        }
         updateTimer.beginNextPeriod();
     }
 
@@ -109,6 +128,7 @@ private:
     uint64_t holdLastTouchMs = 0;
     AH::Timer<millis> updateTimer;
     PianoMode::Mode mode;
+    int monodicNote;
 
 public:
     DigitalNoteSender sender;

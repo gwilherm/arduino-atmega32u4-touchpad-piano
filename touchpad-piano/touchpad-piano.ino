@@ -39,7 +39,7 @@ void colorFade(uint8_t r, uint8_t g, uint8_t b) {
 void setup()
 {
   /* Initialise the serial interface */
-  // Serial.begin(9600);
+  Serial.begin(9600);
   pinMode(BTN_PIN, INPUT_PULLUP);
 
   strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
@@ -48,7 +48,7 @@ void setup()
 
   Control_Surface.begin(); // Initialize Control Surface
 
-  // while (!Serial);
+  while (!Serial);
 }
 
 void loop()
@@ -63,11 +63,15 @@ void loop()
       {
         case PianoMode::Standard:
           piano.setMode(PianoMode::Hold);
-          colorFade(25, 210,  25); // fade into green
+          colorFade( 25, 210,  25); // fade into green
           break;
         case PianoMode::Hold:
+          piano.setMode(PianoMode::Monodic);
+          colorFade( 25,  25, 210); // fade into blue
+          break;
+        case PianoMode::Monodic:
           piano.setMode(PianoMode::Standard);
-          colorFade(25,  25, 210); // fade into blue
+          colorFade(210,  25,  25); // fade into red
           break;
       }
     }
