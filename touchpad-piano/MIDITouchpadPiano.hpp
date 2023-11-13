@@ -84,7 +84,7 @@ public:
 
     void setMode(PianoMode::Mode mode) {
         // Leaving Hold mode requires to stop notes
-        if (mode == PianoMode::Hold)
+        if (this->mode == PianoMode::Hold)
         {
             for (byte i = 0; i < NB_NOTES; i++)
             {
