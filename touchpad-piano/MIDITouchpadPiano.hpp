@@ -34,70 +34,21 @@ public:
 
         byte newKeysState[NB_NOTES];
         int newMonodicNote = -1;
-        byte i;
 
-        uint64_t holdPrevTouch = holdLastTouchMs;
-
-        // Read data
-        for (i = 0; i < NB_NOTES; i++)
-        {
-            digitalWrite(sclPin, LOW);
-            newKeysState[NoteMap[i]] = !digitalRead(sdoPin);
-            if (newKeysState[NoteMap[i]])
-            {
-                holdLastTouchMs = millis();
-                if (NoteMap[i] > newMonodicNote)
-                    newMonodicNote = NoteMap[i];
-            }
-            digitalWrite(sclPin, HIGH);
-        }
+        readData(newKeysState, &newMonodicNote);
         
-        if (mode == PianoMode::Monodic)
-        {
-            if (newMonodicNote != monodicNote)
-            {
-                sender.sendOff(baseAddress + monodicNote);
-                if (newMonodicNote != -1)
-                    sender.sendOn(baseAddress + newMonodicNote);
-                monodicNote = newMonodicNote;
-            }
-            Serial.println(monodicNote);
+        switch (mode) {
+            case PianoMode::Standard:
+                handleStandard(newKeysState);
+                break;
+            case PianoMode::Hold:
+                handleHold(newKeysState);
+                break;
+            case PianoMode::Monodic:
+                handleMonodic(newMonodicNote);
+                break;
         }
-        else
-        {
-            for (i = 0; i < NB_NOTES; i++)
-            {
-                if ((mode == PianoMode::Hold) && ((newKeysState[i] & keysState[i]) == 1))
-                {
-                    // Re-trigger the note if it was already ON
-                    if ((holdLastTouchMs - holdPrevTouch) > HOLD_THRESHOLD_MS)
-                    {
-                        sender.sendOff(baseAddress + i);
-                        sender.sendOn(baseAddress + i);
-                    }
-                }
 
-                // Key changed state
-                if (newKeysState[i] != keysState[i])
-                {
-                    if (newKeysState[i] == 1)
-                    {
-                        sender.sendOn(baseAddress + i);
-                        keysState[i] = 1;
-                    }
-                    else
-                    {
-                        if ((mode != PianoMode::Hold) || ((holdLastTouchMs - holdPrevTouch) > HOLD_THRESHOLD_MS))
-                        {
-                            sender.sendOff(baseAddress + i);
-                            keysState[i] = 0;
-                        }
-                    }
-                }
-                Serial.print(keysState[i]);
-            }
-            Serial.println();
-        }
         updateTimer.beginNextPeriod();
     }
 
@@ -118,6 +69,105 @@ public:
     }
 
     PianoMode::Mode getMode() { return mode; }
+
+    void readData(byte newKeysState[NB_NOTES], int* newMonodicNote)
+    {
+        for (byte i = 0; i < NB_NOTES; i++)
+        {
+            digitalWrite(sclPin, LOW);
+            newKeysState[NoteMap[i]] = !digitalRead(sdoPin);
+            if (newKeysState[NoteMap[i]])
+            {
+                holdLastTouchMs = millis();
+                if (NoteMap[i] > *newMonodicNote)
+                    *newMonodicNote = NoteMap[i];
+            }
+            digitalWrite(sclPin, HIGH);
+        }
+    }
+
+    void handleStandard(byte newKeysState[NB_NOTES])
+    {
+        for (byte i = 0; i < NB_NOTES; i++)
+        {
+            // Key changed state
+            if (newKeysState[i] != keysState[i])
+            {
+                if (newKeysState[i] == 1)
+                {
+                    sender.sendOn(baseAddress + i);
+                    keysState[i] = 1;
+                }
+                else
+                {
+                    sender.sendOff(baseAddress + i);
+                    keysState[i] = 0;
+                }
+            }
+#ifdef DEBUG_VERBOSE
+            Serial.print(keysState[i]);
+#endif
+        }
+#ifdef DEBUG_VERBOSE
+        Serial.println();
+#endif
+    }
+
+    void handleHold(byte newKeysState[NB_NOTES])
+    {
+        uint64_t holdPrevTouch = holdLastTouchMs;
+
+        for (byte i = 0; i < NB_NOTES; i++)
+        {
+            if ((newKeysState[i] & keysState[i]) == 1)
+            {
+                // Re-trigger the note if it was already ON
+                if ((holdLastTouchMs - holdPrevTouch) > HOLD_THRESHOLD_MS)
+                {
+                    sender.sendOff(baseAddress + i);
+                    sender.sendOn(baseAddress + i);
+                }
+            }
+
+            // Key changed state
+            if (newKeysState[i] != keysState[i])
+            {
+                if (newKeysState[i] == 1)
+                {
+                    sender.sendOn(baseAddress + i);
+                    keysState[i] = 1;
+                }
+                else
+                {
+                    if ((holdLastTouchMs - holdPrevTouch) > HOLD_THRESHOLD_MS)
+                    {
+                        sender.sendOff(baseAddress + i);
+                        keysState[i] = 0;
+                    }
+                }
+            }
+#ifdef DEBUG_VERBOSE
+            Serial.print(keysState[i]);
+#endif
+        }
+#ifdef DEBUG_VERBOSE
+        Serial.println();
+#endif
+    }
+
+    void handleMonodic(int newMonodicNote)
+    {
+        if (newMonodicNote != monodicNote)
+        {
+            sender.sendOff(baseAddress + monodicNote);
+            if (newMonodicNote != -1)
+                sender.sendOn(baseAddress + newMonodicNote);
+            monodicNote = newMonodicNote;
+        }
+#ifdef DEBUG_VERBOSE
+        Serial.println(monodicNote);
+#endif
+    }
 
 private:
     const pin_t sclPin;

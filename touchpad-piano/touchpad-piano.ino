@@ -38,8 +38,11 @@ void colorFade(uint8_t r, uint8_t g, uint8_t b) {
 
 void setup()
 {
+#if defined(DEBUG_INFO) || defined(DEBUG_VERBOSE)
   /* Initialise the serial interface */
   Serial.begin(9600);
+#endif
+
   pinMode(BTN_PIN, INPUT_PULLUP);
 
   strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
@@ -48,7 +51,9 @@ void setup()
 
   Control_Surface.begin(); // Initialize Control Surface
 
+#if defined(DEBUG_INFO) || defined(DEBUG_VERBOSE)
   while (!Serial);
+#endif
 }
 
 void loop()
