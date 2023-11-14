@@ -72,6 +72,7 @@ public:
 
     void readData(uint8_t newKeysState[NB_NOTES], int8_t* newMonodicNote)
     {
+        holdPrevTouch = holdLastTouchMs;
         for (uint8_t i = 0; i < NB_NOTES; i++)
         {
             digitalWrite(sclPin, LOW);
@@ -115,8 +116,6 @@ public:
 
     void handleHold(uint8_t newKeysState[NB_NOTES])
     {
-        uint64_t holdPrevTouch = holdLastTouchMs;
-
         for (uint8_t i = 0; i < NB_NOTES; i++)
         {
             if ((newKeysState[i] & keysState[i]) == 1)
@@ -176,6 +175,7 @@ private:
     const uint8_t NoteMap[NB_NOTES] = {1,3,6,8,10,0,2,4,5,7,9,11};
     uint8_t keysState[NB_NOTES] = {0};
     uint64_t holdLastTouchMs = 0;
+    uint64_t holdPrevTouch = 0;
     AH::Timer<millis> updateTimer;
     PianoMode::Mode mode;
     int8_t monodicNote;
