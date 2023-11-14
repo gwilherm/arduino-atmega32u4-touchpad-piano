@@ -18,14 +18,14 @@ namespace PianoMode {
 
 class MIDITouchpadPiano : public MIDIOutputElement {
 public:
-    MIDITouchpadPiano(const pin_t sclPin, const pin_t sdoPin, MIDIAddress baseAddress, PianoMode::Mode mode = PianoMode::Standard)
-        : sclPin(sclPin), sdoPin(sdoPin), baseAddress(baseAddress), updateTimer(UPDATE_RATE), mode(mode), monodicNote(-1) {}
+    MIDITouchpadPiano(const pin_t sclPin, const pin_t sdaPin, MIDIAddress baseAddress, PianoMode::Mode mode = PianoMode::Standard)
+        : sclPin(sclPin), sdaPin(sdaPin), baseAddress(baseAddress), updateTimer(UPDATE_RATE), mode(mode), monodicNote(-1) {}
 
 public:
     void begin() final override {
         /* Configure the clock and data pins */
         pinMode(sclPin, OUTPUT);
-        pinMode(sdoPin, INPUT);
+        pinMode(sdaPin, INPUT);
     }
 
     void update() final override {
@@ -75,7 +75,7 @@ public:
         for (byte i = 0; i < NB_NOTES; i++)
         {
             digitalWrite(sclPin, LOW);
-            newKeysState[NoteMap[i]] = !digitalRead(sdoPin);
+            newKeysState[NoteMap[i]] = !digitalRead(sdaPin);
             if (newKeysState[NoteMap[i]])
             {
                 holdLastTouchMs = millis();
@@ -171,7 +171,7 @@ public:
 
 private:
     const pin_t sclPin;
-    const pin_t sdoPin;
+    const pin_t sdaPin;
     const MIDIAddress baseAddress;
     const byte NoteMap[NB_NOTES] = {1,3,6,8,10,0,2,4,5,7,9,11};
     byte keysState[NB_NOTES] = {0};
